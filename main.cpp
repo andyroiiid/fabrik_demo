@@ -1,95 +1,52 @@
+#include <memory>
+#include <random>
 #include <SDL.h>
 
 #include "renderer.h"
+#include "bones.h"
 
-struct Bones {
-    Bones(const Vec2 &p1, const Vec2 &p2, const Vec2 &p3, const Vec2 &p4) noexcept
-            : p1(p1),
-              p2(p2),
-              p3(p3),
-              p4(p3),
-              l1((p2 - p1).length()),
-              l2((p3 - p2).length()),
-              l3((p4 - p3).length()) {}
+Vec2 mousePos;
 
-    Vec2 p1;
-    Vec2 p2;
-    Vec2 p3;
-    Vec2 p4;
+std::unique_ptr<Bones> bones;
+Vec2 target;
 
-    const float l1;
-    const float l2;
-    const float l3;
+static float randomFloat() {
+    static std::mt19937 generator(std::random_device{}());
+    static std::uniform_real_distribution<float> distribution(0.0f, 1.0f);
+    return distribution(generator);
+}
 
-    void fabrik(const Vec2 &target, float tolerance = 0.001f, int maxIterations = 8) {
-        const Vec2 start = p1;
-        for (int i = 0; i < maxIterations; i++) {
-            if (fabrikStep(start, target) <= tolerance)
-                break;
-        }
+void init() {
+    Vec2 p{400.0f, 300.0f};
+    std::vector<Vec2> points;
+    for (int i = 0; i < 8; i++) {
+        points.push_back(p);
+        p.x += randomFloat() * 90.0f + 10.0f;
     }
+    bones = std::make_unique<Bones>(points);
+}
 
-    void draw() const {
-        setColor(WHITE);
-        drawPoint(p1);
-        drawPoint(p2);
-        drawPoint(p3);
-        drawPoint(p4);
-        drawLine(p1, p2);
-        drawLine(p2, p3);
-        drawLine(p3, p4);
-    }
-
-private:
-    static Vec2 solveBone(const Vec2 &from, const Vec2 &to, float length) {
-        return from + (to - from).normalize() * length;
-    }
-
-    void fabrikBackward(const Vec2 &target) {
-        p4 = target;
-        p3 = solveBone(p4, p3, l3);
-        p2 = solveBone(p3, p2, l2);
-        p1 = solveBone(p2, p1, l1);
-    }
-
-    void fabrikForward(const Vec2 &start) {
-        p1 = start;
-        p2 = solveBone(p1, p2, l1);
-        p3 = solveBone(p2, p3, l2);
-        p4 = solveBone(p3, p4, l3);
-    }
-
-    float fabrikStep(const Vec2 &start, const Vec2 &target) {
-        fabrikBackward(target);
-        fabrikForward(start);
-        return (p4 - target).length();
-    }
-};
-
-Bones bones(
-        {100.0f, 100.0f},
-        {200.0f, 200.0f},
-        {400.0f, 200.0f},
-        {500.0f, 100.0f}
-);
-
-Vec2 target{300.0f, 200.0f};
+static Vec2 linearInterpolation(const Vec2 &a, const Vec2 &b, float t) {
+    return a * (1 - t) + b * t;
+}
 
 void eventCallback(const SDL_Event &event) {
     if (event.type == SDL_MOUSEMOTION) {
         const auto &motion = event.motion;
-        target.x = static_cast<float>(motion.x);
-        target.y = static_cast<float>(motion.y);
+        mousePos.x = static_cast<float>(motion.x);
+        mousePos.y = static_cast<float>(motion.y);
     }
 }
 
-void frameCallback() {
-    bones.fabrik(target);
-    bones.draw();
+void frameCallback(float deltaTime) {
+    target = linearInterpolation(target, mousePos, 10.0f * deltaTime);
+    bones->fabrikSolve(target);
+    bones->draw();
 }
 
 int main(int, char *[]) {
     SDL_Init(SDL_INIT_EVERYTHING);
+    init();
     mainLoop(eventCallback, frameCallback);
     SDL_Quit();
     return 0;

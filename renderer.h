@@ -18,7 +18,7 @@ constexpr SDL_Color WHITE{0xFF, 0xFF, 0xFF, 0xFF};
 
 typedef void (*EventCallback)(const SDL_Event &event);
 
-typedef void (*FrameCallback)();
+typedef void (*FrameCallback)(float deltaTime);
 
 void mainLoop(EventCallback onEvent, FrameCallback onFrame);
 

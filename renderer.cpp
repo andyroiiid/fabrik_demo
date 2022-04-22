@@ -4,6 +4,8 @@
 
 #include "renderer.h"
 
+#include <SDL_timer.h>
+
 static SDL_Window *window = nullptr;
 static SDL_Renderer *renderer = nullptr;
 
@@ -11,6 +13,8 @@ void mainLoop(EventCallback onEvent, FrameCallback onFrame) {
     window = SDL_CreateWindow("FABRIK demo", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 800, 600, 0);
     renderer = SDL_CreateRenderer(window, -1, 0);
 
+    const auto freq = static_cast<float>(SDL_GetPerformanceFrequency());
+    Uint64 prevTime = SDL_GetPerformanceCounter();
     bool running = true;
     while (running) {
         SDL_Event event;
@@ -25,7 +29,9 @@ void mainLoop(EventCallback onEvent, FrameCallback onFrame) {
         setColor(BLACK);
         SDL_RenderClear(renderer);
 
-        onFrame();
+        const Uint64 currTime = SDL_GetPerformanceCounter();
+        onFrame(static_cast<float>(currTime - prevTime) / freq);
+        prevTime = currTime;
 
         SDL_RenderPresent(renderer);
     }
